@@ -1,7 +1,7 @@
 export const DEFAULT_CONFIG = Object.freeze({
   triggerPrefix: '/m',
   searchApiUrl: 'https://cn.bing.com/images/search',
-  corsProxyUrl: '',
+  corsProxyUrl: 'https://api.cors.lol/?url={url}',
   keywordPrefixes: ['duitang.com', '表情包', '白圣女'],
   maxCandidates: 8,
   debug: false

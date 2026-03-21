@@ -4,7 +4,7 @@
   var DEFAULT_CONFIG = Object.freeze({
     triggerPrefix: "/m",
     searchApiUrl: "https://cn.bing.com/images/search",
-    corsProxyUrl: "",
+    corsProxyUrl: "https://api.cors.lol/?url={url}",
     keywordPrefixes: ["duitang.com", "表情包", "白圣女"],
     maxCandidates: 8,
     debug: false
@@ -237,6 +237,15 @@
     hostWindow.document.body.appendChild(root);
     const track = root.querySelector(".ims-candidate-track");
     let currentAnchor = null;
+    track.addEventListener("wheel", (event) => {
+      const deltaY = event.deltaY;
+      const deltaX = event.deltaX;
+      const horizontalDelta = deltaX !== 0 ? deltaX : deltaY;
+      if (!horizontalDelta) return;
+      if (track.scrollWidth <= track.clientWidth) return;
+      track.scrollLeft += horizontalDelta;
+      event.preventDefault();
+    }, { passive: false });
     const api = {
       renderLoading(anchor) {
         currentAnchor = anchor;
@@ -258,7 +267,6 @@
         track.innerHTML = items.map((item) => `
         <button class="ims-candidate-item" type="button" data-ims-id="${escapeHtml(item.id)}" title="${escapeHtml(item.name)}">
           <img class="ims-candidate-image" src="${escapeHtml(item.url)}" alt="${escapeHtml(item.name)}" loading="lazy" />
-          <span class="ims-candidate-label">${escapeHtml(item.name)}</span>
         </button>
       `).join("");
         track.querySelectorAll(".ims-candidate-item").forEach((button, index) => {
@@ -306,18 +314,24 @@
       z-index: 2147483000;
       max-width: calc(100vw - 24px);
       border-radius: 14px;
-      background: rgba(18, 20, 28, 0.96);
-      border: 1px solid rgba(255, 255, 255, 0.12);
-      box-shadow: 0 18px 48px rgba(0, 0, 0, 0.35);
-      backdrop-filter: blur(12px);
-      padding: 10px;
+      background: transparent;
+      border: 0;
+      box-shadow: none;
+      backdrop-filter: none;
+      padding: 0;
     }
 
     .ims-candidate-track {
       display: flex;
       gap: 10px;
       overflow-x: auto;
-      scrollbar-width: thin;
+      overflow-y: hidden;
+      scrollbar-width: none;
+      -ms-overflow-style: none;
+    }
+
+    .ims-candidate-track::-webkit-scrollbar {
+      display: none;
     }
 
     .ims-candidate-state {
@@ -333,20 +347,19 @@
     }
 
     .ims-candidate-item {
-      flex: 0 0 112px;
-      display: flex;
-      flex-direction: column;
-      gap: 6px;
+      flex: 0 0 96px;
+      display: block;
       border: 0;
       border-radius: 12px;
-      background: rgba(255, 255, 255, 0.05);
-      padding: 8px;
+      background: transparent;
+      padding: 0;
       cursor: pointer;
-      color: #f2f4f8;
+      line-height: 0;
+      overflow: hidden;
     }
 
     .ims-candidate-item:hover {
-      background: rgba(255, 255, 255, 0.11);
+      background: transparent;
     }
 
     .ims-candidate-image {
@@ -354,17 +367,9 @@
       height: 72px;
       object-fit: cover;
       border-radius: 10px;
-      background: rgba(255, 255, 255, 0.06);
-    }
-
-    .ims-candidate-label {
+      background: transparent;
       display: block;
-      font-size: 12px;
-      line-height: 1.3;
-      text-align: left;
-      overflow: hidden;
-      text-overflow: ellipsis;
-      white-space: nowrap;
+      pointer-events: none;
     }
   `;
   }
