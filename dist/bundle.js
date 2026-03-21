@@ -387,6 +387,8 @@
     button.style.right = "18px";
     button.style.bottom = "auto";
     button.style.left = "auto";
+    button.hidden = true;
+    button.style.pointerEvents = "none";
     const panel = hostWindow.document.createElement("div");
     panel.className = "ims-settings-panel";
     panel.hidden = true;
@@ -428,12 +430,36 @@
     const keywordPrefixesInput = panel.querySelector('[data-field="keywordPrefixes"]');
     const countInput = panel.querySelector('[data-field="maxCandidates"]');
     sync(currentConfig);
-    button.addEventListener("click", () => {
-      panel.hidden = !panel.hidden;
-      if (!panel.hidden) sync(currentConfig);
+    let hideTimer = null;
+    function showUI() {
+      clearTimeout(hideTimer);
+      button.hidden = false;
+      button.style.pointerEvents = "auto";
+      panel.hidden = false;
+      sync(currentConfig);
+      hideTimer = setTimeout(() => {
+        panel.hidden = true;
+        button.hidden = true;
+        button.style.pointerEvents = "none";
+      }, 5e3);
+    }
+    hostWindow.document.addEventListener("dblclick", showUI);
+    button.addEventListener("click", (event) => {
+      event.stopPropagation();
+      clearTimeout(hideTimer);
+      panel.hidden = false;
+      sync(currentConfig);
+      hideTimer = setTimeout(() => {
+        panel.hidden = true;
+        button.hidden = true;
+        button.style.pointerEvents = "none";
+      }, 5e3);
     });
     panel.querySelector('[data-action="cancel"]').addEventListener("click", () => {
+      clearTimeout(hideTimer);
       panel.hidden = true;
+      button.hidden = true;
+      button.style.pointerEvents = "none";
       sync(currentConfig);
     });
     panel.querySelector('[data-action="save"]').addEventListener("click", () => {
@@ -447,11 +473,15 @@
       };
       logger.info("Saving config", nextConfig);
       onSave(nextConfig);
+      clearTimeout(hideTimer);
       panel.hidden = true;
+      button.hidden = true;
+      button.style.pointerEvents = "none";
     });
     return {
       sync,
       destroy() {
+        clearTimeout(hideTimer);
         button.remove();
         panel.remove();
       }
@@ -480,12 +510,18 @@
       z-index: 2147483001;
       border: 0;
       border-radius: 999px;
-      background: #d6e26f;
-      color: #11141a;
+      background: transparent;
+      color: transparent;
       font-weight: 700;
       padding: 10px 14px;
       cursor: pointer;
-      box-shadow: 0 12px 28px rgba(0, 0, 0, 0.24);
+      box-shadow: none;
+      opacity: 0;
+      transition: opacity 0.2s;
+    }
+
+    .ims-settings-toggle:not([hidden]) {
+      opacity: 1;
     }
 
     .ims-settings-panel {
@@ -496,11 +532,11 @@
       width: 280px;
       padding: 14px;
       border-radius: 16px;
-      background: rgba(18, 20, 28, 0.98);
+      background: transparent;
       color: #f2f4f8;
-      border: 1px solid rgba(255, 255, 255, 0.12);
-      box-shadow: 0 18px 48px rgba(0, 0, 0, 0.35);
-      backdrop-filter: blur(12px);
+      border: 0;
+      box-shadow: none;
+      backdrop-filter: none;
     }
 
     .ims-settings-header {
