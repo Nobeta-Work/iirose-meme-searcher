@@ -65,7 +65,6 @@ export function bootstrapPlugin(hostWindow = window) {
       const items = await searchImages(query, state.config, logger, {
         searchApiUrl,
         baseUrl: hostWindow.location.href,
-        relayBaseUrl: hostWindow.__IMS_V010_BING_RELAY__,
         corsProxyUrl
       })
       if (queryVersion !== state.queryVersion) return
@@ -161,9 +160,6 @@ function getRoomSignature(hostWindow) {
 function getDefaultSearchApiUrl(hostWindow) {
   if (typeof hostWindow.__IMS_V010_SEARCH_API_URL__ === 'string' && hostWindow.__IMS_V010_SEARCH_API_URL__.trim()) {
     return hostWindow.__IMS_V010_SEARCH_API_URL__.trim()
-  }
-  if (typeof hostWindow.__IMS_V010_BING_RELAY__ === 'string' && hostWindow.__IMS_V010_BING_RELAY__.trim()) {
-    return hostWindow.__IMS_V010_BING_RELAY__.trim()
   }
   return ''
 }

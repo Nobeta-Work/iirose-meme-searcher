@@ -8,7 +8,7 @@ import { parseBingHtml } from '../src/search/bing.js'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 const rootDir = path.resolve(__dirname, '..')
-const distScript = path.join(rootDir, 'dist', 'ims.js')
+const distScript = path.join(rootDir, 'dist', 'bundle.js')
 const wsEndpoint = process.argv[2] || 'ws://127.0.0.1:9222/devtools/browser/26525766-ba49-488a-9079-4a771efe2f49'
 const relayPort = Number(process.env.IMS_RELAY_PORT || 8787)
 
@@ -60,7 +60,6 @@ try {
   await frame.evaluate((relay) => {
     window.__IMS_V010__?.destroy?.()
     window.__IMS_V010_SEARCH_API_URL__ = relay
-    window.__IMS_V010_BING_RELAY__ = relay
   }, `http://127.0.0.1:${relayPort}/search`)
 
   await frame.addScriptTag({ path: distScript })

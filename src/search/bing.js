@@ -5,6 +5,9 @@ export async function searchBingImages(query, config, logger, options = {}) {
   if (!trimmed) return []
 
   if (options.searchPageUrl && isBingSearchUrl(options.searchPageUrl)) {
+    if (options.corsProxyUrl) {
+      return searchBingViaCorsProxy(trimmed, config.maxCandidates, options.searchPageUrl, options.corsProxyUrl, logger)
+    }
     return searchBingViaConfiguredUrl(trimmed, config.maxCandidates, options.searchPageUrl, logger)
   }
 
@@ -12,9 +15,8 @@ export async function searchBingImages(query, config, logger, options = {}) {
     return searchViaRelay(trimmed, config.maxCandidates, options.relayBaseUrl, logger)
   }
 
-  // 使用 CORS 代理解决跨域问题
   if (options.corsProxyUrl) {
-    return searchBingViaCorsProxy(trimmed, config.maxCandidates, options.corsProxyUrl, logger)
+    return searchBingViaCorsProxy(trimmed, config.maxCandidates, 'https://www.bing.com/images/search', options.corsProxyUrl, logger)
   }
 
   const endpoints = [
@@ -133,14 +135,14 @@ async function searchBingViaConfiguredUrl(query, limit, searchPageUrl, logger) {
   throw new Error('Bing 页面未解析到可用结果，可能受跨域或页面结构变化影响。')
 }
 
-async function searchBingViaCorsProxy(query, limit, corsProxyUrl, logger) {
-  // 支持两种格式：
-  // 1. 直接代理：https://corsproxy.io/?<url>
-  // 2. 模板格式：使用 {url} 占位符，如 https://your-proxy.com/proxy?url={url}
-  const bingUrl = `https://www.bing.com/images/search?q=${encodeURIComponent(query)}&form=HDRSC3`
-  const proxyEndpoint = corsProxyUrl.includes('{url}')
-    ? corsProxyUrl.replace('{url}', encodeURIComponent(bingUrl))
-    : `${corsProxyUrl}?${encodeURIComponent(bingUrl)}`
+async function searchBingViaCorsProxy(query, limit, searchPageUrl, corsProxyUrl, logger) {
+  const bingEndpoint = new URL(searchPageUrl)
+  bingEndpoint.searchParams.set('q', query)
+  if (!bingEndpoint.searchParams.has('form')) {
+    bingEndpoint.searchParams.set('form', 'HDRSC3')
+  }
+
+  const proxyEndpoint = buildProxyUrl(corsProxyUrl, bingEndpoint.toString())
 
   logger.debug('Requesting Bing via CORS proxy', proxyEndpoint)
   const response = await fetch(proxyEndpoint, {
@@ -157,4 +159,20 @@ async function searchBingViaCorsProxy(query, limit, corsProxyUrl, logger) {
   const items = parseBingHtml(html, limit)
   if (items.length) return items
   throw new Error('Bing 页面未解析到可用结果，可能受跨域或页面结构变化影响。')
+}
+
+function buildProxyUrl(corsProxyUrl, targetUrl) {
+  if (corsProxyUrl.includes('{url}')) {
+    return corsProxyUrl.replace('{url}', encodeURIComponent(targetUrl))
+  }
+
+  if (/[?&]$/.test(corsProxyUrl)) {
+    return `${corsProxyUrl}${encodeURIComponent(targetUrl)}`
+  }
+
+  if (corsProxyUrl.includes('?')) {
+    return `${corsProxyUrl}&url=${encodeURIComponent(targetUrl)}`
+  }
+
+  return `${corsProxyUrl}?${encodeURIComponent(targetUrl)}`
 }

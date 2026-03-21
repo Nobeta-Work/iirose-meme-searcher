@@ -609,13 +609,16 @@
     const trimmed = query.trim();
     if (!trimmed) return [];
     if (options.searchPageUrl && isBingSearchUrl(options.searchPageUrl)) {
+      if (options.corsProxyUrl) {
+        return searchBingViaCorsProxy(trimmed, config.maxCandidates, options.searchPageUrl, options.corsProxyUrl, logger);
+      }
       return searchBingViaConfiguredUrl(trimmed, config.maxCandidates, options.searchPageUrl, logger);
     }
     if (options.relayBaseUrl) {
       return searchViaRelay(trimmed, config.maxCandidates, options.relayBaseUrl, logger);
     }
     if (options.corsProxyUrl) {
-      return searchBingViaCorsProxy(trimmed, config.maxCandidates, options.corsProxyUrl, logger);
+      return searchBingViaCorsProxy(trimmed, config.maxCandidates, "https://www.bing.com/images/search", options.corsProxyUrl, logger);
     }
     const endpoints = [
       `https://www.bing.com/images/async?q=${encodeURIComponent(trimmed)}&first=0&count=${config.maxCandidates}&adlt=off`,
@@ -714,9 +717,13 @@
     if (items.length) return items;
     throw new Error("Bing 页面未解析到可用结果，可能受跨域或页面结构变化影响。");
   }
-  async function searchBingViaCorsProxy(query, limit, corsProxyUrl, logger) {
-    const bingUrl = `https://www.bing.com/images/search?q=${encodeURIComponent(query)}&form=HDRSC3`;
-    const proxyEndpoint = corsProxyUrl.includes("{url}") ? corsProxyUrl.replace("{url}", encodeURIComponent(bingUrl)) : `${corsProxyUrl}?${encodeURIComponent(bingUrl)}`;
+  async function searchBingViaCorsProxy(query, limit, searchPageUrl, corsProxyUrl, logger) {
+    const bingEndpoint = new URL(searchPageUrl);
+    bingEndpoint.searchParams.set("q", query);
+    if (!bingEndpoint.searchParams.has("form")) {
+      bingEndpoint.searchParams.set("form", "HDRSC3");
+    }
+    const proxyEndpoint = buildProxyUrl(corsProxyUrl, bingEndpoint.toString());
     logger.debug("Requesting Bing via CORS proxy", proxyEndpoint);
     const response = await fetch(proxyEndpoint, {
       method: "GET",
@@ -730,6 +737,18 @@
     const items = parseBingHtml(html, limit);
     if (items.length) return items;
     throw new Error("Bing 页面未解析到可用结果，可能受跨域或页面结构变化影响。");
+  }
+  function buildProxyUrl(corsProxyUrl, targetUrl) {
+    if (corsProxyUrl.includes("{url}")) {
+      return corsProxyUrl.replace("{url}", encodeURIComponent(targetUrl));
+    }
+    if (/[?&]$/.test(corsProxyUrl)) {
+      return `${corsProxyUrl}${encodeURIComponent(targetUrl)}`;
+    }
+    if (corsProxyUrl.includes("?")) {
+      return `${corsProxyUrl}&url=${encodeURIComponent(targetUrl)}`;
+    }
+    return `${corsProxyUrl}?${encodeURIComponent(targetUrl)}`;
   }
 
   // src/search/api.js
@@ -893,7 +912,6 @@
         const items = await searchImages(query, state.config, logger, {
           searchApiUrl,
           baseUrl: hostWindow.location.href,
-          relayBaseUrl: hostWindow.__IMS_V010_BING_RELAY__,
           corsProxyUrl
         });
         if (queryVersion !== state.queryVersion) return;
@@ -971,9 +989,6 @@
     if (typeof hostWindow.__IMS_V010_SEARCH_API_URL__ === "string" && hostWindow.__IMS_V010_SEARCH_API_URL__.trim()) {
       return hostWindow.__IMS_V010_SEARCH_API_URL__.trim();
     }
-    if (typeof hostWindow.__IMS_V010_BING_RELAY__ === "string" && hostWindow.__IMS_V010_BING_RELAY__.trim()) {
-      return hostWindow.__IMS_V010_BING_RELAY__.trim();
-    }
     return "";
   }
 
@@ -984,4 +999,4 @@
     console.error("[IMS:bootstrap] Failed to initialize", error);
   }
 })();
-//# sourceMappingURL=ims.js.map
+//# sourceMappingURL=bundle.js.map
