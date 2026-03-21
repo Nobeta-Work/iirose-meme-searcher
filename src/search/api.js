@@ -23,7 +23,11 @@ export async function searchImages(query, config, logger, options = {}) {
   endpoint.searchParams.set('limit', String(config.maxCandidates))
 
   logger.debug('Requesting search API', endpoint.toString())
-  const response = await fetch(endpoint.toString(), {
+
+  // 使用 CORS 代理（如果配置了）
+  const finalUrl = options.corsProxyUrl ? buildProxyUrl(options.corsProxyUrl, endpoint.toString()) : endpoint.toString()
+
+  const response = await fetch(finalUrl, {
     method: 'GET',
     mode: 'cors',
     credentials: 'omit'
@@ -60,4 +64,17 @@ function normalizeItem(item) {
     url: item.url,
     enabled: true
   }
+}
+
+function buildProxyUrl(corsProxyUrl, targetUrl) {
+  if (corsProxyUrl.includes('{url}')) {
+    return corsProxyUrl.replace('{url}', encodeURIComponent(targetUrl))
+  }
+  if (/[?&]$/.test(corsProxyUrl)) {
+    return `${corsProxyUrl}${encodeURIComponent(targetUrl)}`
+  }
+  if (corsProxyUrl.includes('?')) {
+    return `${corsProxyUrl}&url=${encodeURIComponent(targetUrl)}`
+  }
+  return `${corsProxyUrl}?url=${encodeURIComponent(targetUrl)}`
 }
