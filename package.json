@@ -7,11 +7,9 @@
   "scripts": {
     "build": "node scripts/build.mjs",
     "test": "node --test",
-    "relay:bing": "node scripts/bing-relay.mjs",
     "print:installer": "node scripts/print-installer.mjs"
   },
   "devDependencies": {
-    "esbuild": "^0.25.2",
-    "playwright-core": "^1.58.2"
+    "esbuild": "^0.25.2"
   }
 }

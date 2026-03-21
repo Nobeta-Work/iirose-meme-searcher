@@ -111,6 +111,7 @@ function injectStyles(hostWindow) {
       box-shadow: none;
       backdrop-filter: none;
       padding: 0;
+      pointer-events: none;
     }
 
     .ims-candidate-track {
@@ -120,6 +121,7 @@ function injectStyles(hostWindow) {
       overflow-y: hidden;
       scrollbar-width: none;
       -ms-overflow-style: none;
+      pointer-events: auto;
     }
 
     .ims-candidate-track::-webkit-scrollbar {

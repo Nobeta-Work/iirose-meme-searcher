@@ -1,7 +1,7 @@
 export const DEFAULT_CONFIG = Object.freeze({
   triggerPrefix: '/m',
-  searchApiUrl: 'https://cn.bing.com/images/search',
-  corsProxyUrl: 'https://api.cors.lol/?url={url}',
+  searchApiUrl: 'https://iirose-meme-searcher.iirose-meme-searcher.workers.dev/search',
+  corsProxyUrl: '',
   keywordPrefixes: ['duitang.com', '表情包', '白圣女'],
   maxCandidates: 8,
   debug: false

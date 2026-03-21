@@ -32,7 +32,7 @@ export function createSettingsPanel(hostWindow, logger, initialConfig, onSave) {
     </label>
     <label class="ims-settings-field">
       <span>搜索接口地址</span>
-      <input data-field="searchApiUrl" type="url" placeholder="https://cn.bing.com/images/search" />
+      <input data-field="searchApiUrl" type="url" placeholder="https://iirose-meme-searcher.iirose-meme-searcher.workers.dev/search" />
     </label>
     <label class="ims-settings-field">
       <span>CORS 代理地址（可选，使用公共代理解决跨域问题）</span>
@@ -62,9 +62,12 @@ export function createSettingsPanel(hostWindow, logger, initialConfig, onSave) {
   sync(currentConfig)
 
   let hideTimer = null
+  let clickCount = 0
+  let clickTimer = null
 
   function showUI() {
     clearTimeout(hideTimer)
+    clearTimeout(clickTimer)
     button.hidden = false
     button.style.pointerEvents = 'auto'
     panel.hidden = false
@@ -77,8 +80,18 @@ export function createSettingsPanel(hostWindow, logger, initialConfig, onSave) {
     }, 5000)
   }
 
-  // 双击任意位置触发显示
-  hostWindow.document.addEventListener('dblclick', showUI)
+  function handleDoubleClick() {
+    clickCount++
+    if (clickCount === 2) {
+      showUI()
+      clickCount = 0
+      clearTimeout(clickTimer)
+    } else {
+      clickTimer = setTimeout(() => {
+        clickCount = 0
+      }, 300)
+    }
+  }
 
   // 单击按钮打开面板
   button.addEventListener('click', (event) => {
@@ -93,6 +106,9 @@ export function createSettingsPanel(hostWindow, logger, initialConfig, onSave) {
       button.style.pointerEvents = 'none'
     }, 5000)
   })
+
+  // 双击任意位置触发显示
+  hostWindow.document.addEventListener('dblclick', handleDoubleClick)
 
   panel.querySelector('[data-action="cancel"]').addEventListener('click', () => {
     clearTimeout(hideTimer)
@@ -123,6 +139,8 @@ export function createSettingsPanel(hostWindow, logger, initialConfig, onSave) {
     sync,
     destroy() {
       clearTimeout(hideTimer)
+      clearTimeout(clickTimer)
+      hostWindow.document.removeEventListener('dblclick', handleDoubleClick)
       button.remove()
       panel.remove()
     }
@@ -153,12 +171,13 @@ function injectStyles(hostWindow) {
       z-index: 2147483001;
       border: 0;
       border-radius: 999px;
-      background: transparent;
-      color: transparent;
+      background: rgba(255, 255, 255, 0.15);
+      color: #f2f4f8;
       font-weight: 700;
+      font-size: 12px;
       padding: 10px 14px;
       cursor: pointer;
-      box-shadow: none;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
       opacity: 0;
       transition: opacity 0.2s;
     }
@@ -175,17 +194,22 @@ function injectStyles(hostWindow) {
       width: 280px;
       padding: 14px;
       border-radius: 16px;
-      background: transparent;
+      background: rgba(30, 30, 30, 0.85);
       color: #f2f4f8;
-      border: 0;
-      box-shadow: none;
-      backdrop-filter: none;
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+      backdrop-filter: blur(12px);
+    }
+
+    .ims-settings-panel[hidden] {
+      pointer-events: none;
     }
 
     .ims-settings-header {
       font-size: 14px;
       font-weight: 700;
       margin-bottom: 12px;
+      color: #fff;
     }
 
     .ims-settings-field {
@@ -196,14 +220,26 @@ function injectStyles(hostWindow) {
       font-size: 12px;
     }
 
+    .ims-settings-field span {
+      color: #c9cfd8;
+    }
+
     .ims-settings-field input,
     .ims-settings-field textarea,
     .ims-settings-field select {
-      border: 1px solid rgba(255, 255, 255, 0.12);
+      border: 1px solid rgba(255, 255, 255, 0.2);
       border-radius: 10px;
-      background: rgba(255, 255, 255, 0.06);
+      background: rgba(255, 255, 255, 0.08);
       color: #f2f4f8;
       padding: 8px 10px;
+      font-size: 12px;
+    }
+
+    .ims-settings-field input:focus,
+    .ims-settings-field textarea:focus {
+      outline: none;
+      border-color: rgba(255, 255, 255, 0.4);
+      background: rgba(255, 255, 255, 0.12);
     }
 
     .ims-settings-field textarea {
@@ -217,6 +253,7 @@ function injectStyles(hostWindow) {
       display: flex;
       justify-content: flex-end;
       gap: 8px;
+      margin-top: 14px;
     }
 
     .ims-settings-actions button {
@@ -224,8 +261,26 @@ function injectStyles(hostWindow) {
       border-radius: 10px;
       padding: 8px 12px;
       cursor: pointer;
+      font-size: 12px;
+      transition: background 0.2s;
+    }
+
+    .ims-settings-actions button[data-action="cancel"] {
       background: rgba(255, 255, 255, 0.1);
-      color: #f2f4f8;
+      color: #c9cfd8;
+    }
+
+    .ims-settings-actions button[data-action="cancel"]:hover {
+      background: rgba(255, 255, 255, 0.15);
+    }
+
+    .ims-settings-actions button[data-action="save"] {
+      background: rgba(99, 179, 99, 0.8);
+      color: #fff;
+    }
+
+    .ims-settings-actions button[data-action="save"]:hover {
+      background: rgba(99, 179, 99, 1);
     }
   `
 }
