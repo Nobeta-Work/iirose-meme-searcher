@@ -17,6 +17,7 @@
     const next = {
       triggerPrefix: normalizePrefix(raw.triggerPrefix),
       searchApiUrl: normalizeSearchApiUrl(raw.searchApiUrl),
+      corsProxyUrl: normalizeCorsProxyUrl(raw.corsProxyUrl),
       keywordPrefixes: normalizeKeywordPrefixes(raw.keywordPrefixes),
       maxCandidates: normalizeCandidateCount(raw.maxCandidates),
       debug: Boolean(raw.debug)
@@ -30,6 +31,10 @@
   }
   function normalizeSearchApiUrl(value) {
     if (typeof value !== "string") return DEFAULT_CONFIG.searchApiUrl;
+    return value.trim();
+  }
+  function normalizeCorsProxyUrl(value) {
+    if (typeof value !== "string") return DEFAULT_CONFIG.corsProxyUrl;
     return value.trim();
   }
   function normalizeKeywordPrefixes(value) {
@@ -884,11 +889,12 @@
         const query = buildSearchQuery(keyword, state.config.keywordPrefixes);
         logger.debug("Search query built", query);
         const searchApiUrl = resolveSearchApiUrl(state.config, getDefaultSearchApiUrl(hostWindow));
+        const corsProxyUrl = hostWindow.__IMS_V010_CORS_PROXY__?.trim() || state.config.corsProxyUrl?.trim();
         const items = await searchImages(query, state.config, logger, {
           searchApiUrl,
           baseUrl: hostWindow.location.href,
           relayBaseUrl: hostWindow.__IMS_V010_BING_RELAY__,
-          corsProxyUrl: hostWindow.__IMS_V010_CORS_PROXY__
+          corsProxyUrl
         });
         if (queryVersion !== state.queryVersion) return;
         if (!items.length) {

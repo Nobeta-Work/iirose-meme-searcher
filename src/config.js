@@ -1,6 +1,7 @@
 export const DEFAULT_CONFIG = Object.freeze({
   triggerPrefix: '/m',
   searchApiUrl: 'https://cn.bing.com/images/search',
+  corsProxyUrl: '',
   keywordPrefixes: ['duitang.com', '表情包', '白圣女'],
   maxCandidates: 8,
   debug: false
@@ -15,6 +16,7 @@ export function normalizeConfig(raw = {}) {
   const next = {
     triggerPrefix: normalizePrefix(raw.triggerPrefix),
     searchApiUrl: normalizeSearchApiUrl(raw.searchApiUrl),
+    corsProxyUrl: normalizeCorsProxyUrl(raw.corsProxyUrl),
     keywordPrefixes: normalizeKeywordPrefixes(raw.keywordPrefixes),
     maxCandidates: normalizeCandidateCount(raw.maxCandidates),
     debug: Boolean(raw.debug)
@@ -31,6 +33,11 @@ function normalizePrefix(value) {
 
 function normalizeSearchApiUrl(value) {
   if (typeof value !== 'string') return DEFAULT_CONFIG.searchApiUrl
+  return value.trim()
+}
+
+function normalizeCorsProxyUrl(value) {
+  if (typeof value !== 'string') return DEFAULT_CONFIG.corsProxyUrl
   return value.trim()
 }
 

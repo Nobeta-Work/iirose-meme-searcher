@@ -11,7 +11,11 @@ export async function searchImages(query, config, logger, options = {}) {
   }
 
   if (isBingSearchUrl(apiUrl)) {
-    return searchBingImages(trimmed, config, logger, { searchPageUrl: apiUrl })
+    return searchBingImages(trimmed, config, logger, {
+      searchPageUrl: apiUrl,
+      relayBaseUrl: options.relayBaseUrl,
+      corsProxyUrl: options.corsProxyUrl
+    })
   }
 
   const endpoint = new URL(apiUrl, options.baseUrl || 'http://localhost')

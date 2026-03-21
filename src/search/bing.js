@@ -12,6 +12,11 @@ export async function searchBingImages(query, config, logger, options = {}) {
     return searchViaRelay(trimmed, config.maxCandidates, options.relayBaseUrl, logger)
   }
 
+  // 使用 CORS 代理解决跨域问题
+  if (options.corsProxyUrl) {
+    return searchBingViaCorsProxy(trimmed, config.maxCandidates, options.corsProxyUrl, logger)
+  }
+
   const endpoints = [
     `https://www.bing.com/images/async?q=${encodeURIComponent(trimmed)}&first=0&count=${config.maxCandidates}&adlt=off`,
     `https://www.bing.com/images/search?q=${encodeURIComponent(trimmed)}&form=HDRSC3`
@@ -122,6 +127,32 @@ async function searchBingViaConfiguredUrl(query, limit, searchPageUrl, logger) {
     mode: 'cors',
     credentials: 'omit'
   })
+  const html = await response.text()
+  const items = parseBingHtml(html, limit)
+  if (items.length) return items
+  throw new Error('Bing 页面未解析到可用结果，可能受跨域或页面结构变化影响。')
+}
+
+async function searchBingViaCorsProxy(query, limit, corsProxyUrl, logger) {
+  // 支持两种格式：
+  // 1. 直接代理：https://corsproxy.io/?<url>
+  // 2. 模板格式：使用 {url} 占位符，如 https://your-proxy.com/proxy?url={url}
+  const bingUrl = `https://www.bing.com/images/search?q=${encodeURIComponent(query)}&form=HDRSC3`
+  const proxyEndpoint = corsProxyUrl.includes('{url}')
+    ? corsProxyUrl.replace('{url}', encodeURIComponent(bingUrl))
+    : `${corsProxyUrl}?${encodeURIComponent(bingUrl)}`
+
+  logger.debug('Requesting Bing via CORS proxy', proxyEndpoint)
+  const response = await fetch(proxyEndpoint, {
+    method: 'GET',
+    mode: 'cors',
+    credentials: 'omit'
+  })
+
+  if (!response.ok) {
+    throw new Error(`CORS 代理请求失败：${response.status}`)
+  }
+
   const html = await response.text()
   const items = parseBingHtml(html, limit)
   if (items.length) return items

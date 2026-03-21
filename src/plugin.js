@@ -61,9 +61,12 @@ export function bootstrapPlugin(hostWindow = window) {
       const query = buildSearchQuery(keyword, state.config.keywordPrefixes)
       logger.debug('Search query built', query)
       const searchApiUrl = resolveSearchApiUrl(state.config, getDefaultSearchApiUrl(hostWindow))
+      const corsProxyUrl = hostWindow.__IMS_V010_CORS_PROXY__?.trim() || state.config.corsProxyUrl?.trim()
       const items = await searchImages(query, state.config, logger, {
         searchApiUrl,
-        baseUrl: hostWindow.location.href
+        baseUrl: hostWindow.location.href,
+        relayBaseUrl: hostWindow.__IMS_V010_BING_RELAY__,
+        corsProxyUrl
       })
       if (queryVersion !== state.queryVersion) return
       if (!items.length) {
