@@ -4,7 +4,7 @@
   var DEFAULT_CONFIG = Object.freeze({
     triggerPrefix: "/m",
     searchApiUrl: "",
-    keywordPrefixes: [],
+    keywordPrefixes: ["duitang.com", "表情包", "白圣女"],
     maxCandidates: 8,
     debug: false
   });
