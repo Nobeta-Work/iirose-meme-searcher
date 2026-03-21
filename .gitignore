@@ -1,0 +1,4 @@
+node_modules/
+.npm-cache/
+.chrome-automation/
+tmp_*.html
