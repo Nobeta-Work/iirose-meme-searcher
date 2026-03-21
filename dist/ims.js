@@ -445,7 +445,7 @@
     .ims-settings-toggle {
       position: fixed;
       right: 18px;
-      bottom: 18px;
+      top: 18px;
       z-index: 2147483001;
       border: 0;
       border-radius: 999px;
@@ -460,7 +460,7 @@
     .ims-settings-panel {
       position: fixed;
       right: 18px;
-      bottom: 68px;
+      top: 68px;
       z-index: 2147483001;
       width: 280px;
       padding: 14px;
