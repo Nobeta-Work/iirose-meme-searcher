@@ -19,7 +19,7 @@ export function createSettingsPanel(hostWindow, logger, initialConfig, onSave) {
 
   const panel = hostWindow.document.createElement('div')
   panel.className = 'ims-settings-panel'
-  panel.hidden = false
+  panel.dataset.expanded = 'false'
   panel.style.top = '118px'
   panel.style.right = '18px'
   panel.style.bottom = 'auto'
@@ -61,14 +61,16 @@ export function createSettingsPanel(hostWindow, logger, initialConfig, onSave) {
   const countInput = panel.querySelector('[data-field="maxCandidates"]')
   sync(currentConfig)
 
-  // 单击按钮切换面板显示/隐藏
+  // 单击按钮切换面板展开/折叠
   button.addEventListener('click', (event) => {
     event.stopPropagation()
-    panel.hidden = !panel.hidden
+    const isExpanded = panel.dataset.expanded === 'true'
+    panel.dataset.expanded = String(!isExpanded)
   })
 
   panel.querySelector('[data-action="cancel"]').addEventListener('click', () => {
     sync(currentConfig)
+    panel.dataset.expanded = 'false'
   })
 
   panel.querySelector('[data-action="save"]').addEventListener('click', () => {
@@ -82,7 +84,7 @@ export function createSettingsPanel(hostWindow, logger, initialConfig, onSave) {
     }
     logger.info('Saving config', nextConfig)
     onSave(nextConfig)
-    panel.hidden = true
+    panel.dataset.expanded = 'false'
   })
 
   return {
@@ -145,6 +147,17 @@ function injectStyles(hostWindow) {
       border: 1px solid rgba(255, 255, 255, 0.1);
       box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
       backdrop-filter: blur(12px);
+      visibility: hidden;
+      opacity: 0;
+      transform: scale(0.95);
+      transform-origin: top right;
+      transition: visibility 0.2s, opacity 0.2s, transform 0.2s;
+    }
+
+    .ims-settings-panel[data-expanded="true"] {
+      visibility: visible;
+      opacity: 1;
+      transform: scale(1);
     }
 
     .ims-settings-header {

@@ -24,11 +24,10 @@ https://cdn.jsdelivr.net/gh/Nobeta-Work/iirose-meme-searcher@main/dist/bundle.js
 7. 回到聊天输入框，输入 `/m 开心` 这类内容开始搜索。
 8. 点击候选图片即可发送到公屏。
 
-### 注意事项
-
-- 本仓库提供的是前端插件产物链接。
-- 默认已内置 Cloudflare Workers 中继服务，无需额外配置。
-- 默认检索前缀词已内置为：`duitang.com`、`表情包`、`白圣女`。
+### 前缀词参考
+- 塞西莉亚: [duitang.com 白圣女] ~~低表情命中率~~
+- 猫: [huaban.com 猫 表情包]
+- 抽象表情包: [qiubiaoqing.com 抽象 表情包 ]
 
 ---
 
