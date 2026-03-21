@@ -10,10 +10,18 @@ export function createSettingsPanel(hostWindow, logger, initialConfig, onSave) {
   button.type = 'button'
   button.className = 'ims-settings-toggle'
   button.textContent = 'IMS'
+  button.style.top = '18px'
+  button.style.right = '18px'
+  button.style.bottom = 'auto'
+  button.style.left = 'auto'
 
   const panel = hostWindow.document.createElement('div')
   panel.className = 'ims-settings-panel'
   panel.hidden = true
+  panel.style.top = '68px'
+  panel.style.right = '18px'
+  panel.style.bottom = 'auto'
+  panel.style.left = 'auto'
   panel.innerHTML = `
     <div class="ims-settings-header">IMS v0.1.0</div>
     <label class="ims-settings-field">
@@ -23,6 +31,10 @@ export function createSettingsPanel(hostWindow, logger, initialConfig, onSave) {
     <label class="ims-settings-field">
       <span>搜索接口地址</span>
       <input data-field="searchApiUrl" type="url" placeholder="https://cn.bing.com/images/search" />
+    </label>
+    <label class="ims-settings-field">
+      <span>CORS 代理地址（可选，使用公共代理解决跨域问题）</span>
+      <input data-field="corsProxyUrl" type="url" placeholder="https://corsproxy.io/ 或 https://your-proxy.com/proxy?url={url}" />
     </label>
     <label class="ims-settings-field">
       <span>检索前缀词（每行或逗号分隔一个）</span>
@@ -42,6 +54,7 @@ export function createSettingsPanel(hostWindow, logger, initialConfig, onSave) {
 
   const prefixInput = panel.querySelector('[data-field="triggerPrefix"]')
   const searchApiUrlInput = panel.querySelector('[data-field="searchApiUrl"]')
+  const corsProxyUrlInput = panel.querySelector('[data-field="corsProxyUrl"]')
   const keywordPrefixesInput = panel.querySelector('[data-field="keywordPrefixes"]')
   const countInput = panel.querySelector('[data-field="maxCandidates"]')
   sync(currentConfig)
@@ -61,6 +74,7 @@ export function createSettingsPanel(hostWindow, logger, initialConfig, onSave) {
       ...currentConfig,
       triggerPrefix: prefixInput.value,
       searchApiUrl: searchApiUrlInput.value,
+      corsProxyUrl: corsProxyUrlInput.value,
       keywordPrefixes: keywordPrefixesInput.value,
       maxCandidates: Number(countInput.value)
     }
@@ -81,16 +95,19 @@ export function createSettingsPanel(hostWindow, logger, initialConfig, onSave) {
     currentConfig = { ...config }
     prefixInput.value = config.triggerPrefix
     searchApiUrlInput.value = config.searchApiUrl || ''
+    corsProxyUrlInput.value = config.corsProxyUrl || ''
     keywordPrefixesInput.value = formatKeywordPrefixes(config.keywordPrefixes)
     countInput.value = String(config.maxCandidates)
   }
 }
 
 function injectStyles(hostWindow) {
-  if (hostWindow.document.getElementById(STYLE_ID)) return
-
-  const style = hostWindow.document.createElement('style')
-  style.id = STYLE_ID
+  let style = hostWindow.document.getElementById(STYLE_ID)
+  if (!style) {
+    style = hostWindow.document.createElement('style')
+    style.id = STYLE_ID
+    hostWindow.document.head.appendChild(style)
+  }
   style.textContent = `
     .ims-settings-toggle {
       position: fixed;
@@ -168,6 +185,4 @@ function injectStyles(hostWindow) {
       color: #f2f4f8;
     }
   `
-
-  hostWindow.document.head.appendChild(style)
 }

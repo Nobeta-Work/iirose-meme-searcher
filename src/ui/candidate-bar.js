@@ -80,10 +80,12 @@ export function createCandidateBar(hostWindow, logger) {
 }
 
 function injectStyles(hostWindow) {
-  if (hostWindow.document.getElementById(STYLE_ID)) return
-
-  const style = hostWindow.document.createElement('style')
-  style.id = STYLE_ID
+  let style = hostWindow.document.getElementById(STYLE_ID)
+  if (!style) {
+    style = hostWindow.document.createElement('style')
+    style.id = STYLE_ID
+    hostWindow.document.head.appendChild(style)
+  }
   style.textContent = `
     .ims-candidate-bar {
       position: fixed;
@@ -151,6 +153,4 @@ function injectStyles(hostWindow) {
       white-space: nowrap;
     }
   `
-
-  hostWindow.document.head.appendChild(style)
 }

@@ -5,6 +5,7 @@ export function createToastManager(hostWindow) {
 
   const root = hostWindow.document.createElement('div')
   root.className = 'ims-toast-root'
+  root.hidden = true
   hostWindow.document.body.appendChild(root)
 
   let timer = null
@@ -27,9 +28,12 @@ export function createToastManager(hostWindow) {
 }
 
 function injectStyles(hostWindow) {
-  if (hostWindow.document.getElementById(STYLE_ID)) return
-  const style = hostWindow.document.createElement('style')
-  style.id = STYLE_ID
+  let style = hostWindow.document.getElementById(STYLE_ID)
+  if (!style) {
+    style = hostWindow.document.createElement('style')
+    style.id = STYLE_ID
+    hostWindow.document.head.appendChild(style)
+  }
   style.textContent = `
     .ims-toast-root {
       position: fixed;
@@ -54,5 +58,4 @@ function injectStyles(hostWindow) {
       background: rgba(98, 39, 39, 0.95);
     }
   `
-  hostWindow.document.head.appendChild(style)
 }

@@ -4,6 +4,7 @@
   var DEFAULT_CONFIG = Object.freeze({
     triggerPrefix: "/m",
     searchApiUrl: "https://cn.bing.com/images/search",
+    corsProxyUrl: "",
     keywordPrefixes: ["duitang.com", "表情包", "白圣女"],
     maxCandidates: 8,
     debug: false
@@ -288,9 +289,12 @@
     }
   }
   function injectStyles(hostWindow) {
-    if (hostWindow.document.getElementById(STYLE_ID)) return;
-    const style = hostWindow.document.createElement("style");
-    style.id = STYLE_ID;
+    let style = hostWindow.document.getElementById(STYLE_ID);
+    if (!style) {
+      style = hostWindow.document.createElement("style");
+      style.id = STYLE_ID;
+      hostWindow.document.head.appendChild(style);
+    }
     style.textContent = `
     .ims-candidate-bar {
       position: fixed;
@@ -358,7 +362,6 @@
       white-space: nowrap;
     }
   `;
-    hostWindow.document.head.appendChild(style);
   }
 
   // src/ui/settings-panel.js
@@ -370,9 +373,17 @@
     button.type = "button";
     button.className = "ims-settings-toggle";
     button.textContent = "IMS";
+    button.style.top = "18px";
+    button.style.right = "18px";
+    button.style.bottom = "auto";
+    button.style.left = "auto";
     const panel = hostWindow.document.createElement("div");
     panel.className = "ims-settings-panel";
     panel.hidden = true;
+    panel.style.top = "68px";
+    panel.style.right = "18px";
+    panel.style.bottom = "auto";
+    panel.style.left = "auto";
     panel.innerHTML = `
     <div class="ims-settings-header">IMS v0.1.0</div>
     <label class="ims-settings-field">
@@ -382,6 +393,10 @@
     <label class="ims-settings-field">
       <span>搜索接口地址</span>
       <input data-field="searchApiUrl" type="url" placeholder="https://cn.bing.com/images/search" />
+    </label>
+    <label class="ims-settings-field">
+      <span>CORS 代理地址（可选，使用公共代理解决跨域问题）</span>
+      <input data-field="corsProxyUrl" type="url" placeholder="https://corsproxy.io/ 或 https://your-proxy.com/proxy?url={url}" />
     </label>
     <label class="ims-settings-field">
       <span>检索前缀词（每行或逗号分隔一个）</span>
@@ -399,6 +414,7 @@
     hostWindow.document.body.append(button, panel);
     const prefixInput = panel.querySelector('[data-field="triggerPrefix"]');
     const searchApiUrlInput = panel.querySelector('[data-field="searchApiUrl"]');
+    const corsProxyUrlInput = panel.querySelector('[data-field="corsProxyUrl"]');
     const keywordPrefixesInput = panel.querySelector('[data-field="keywordPrefixes"]');
     const countInput = panel.querySelector('[data-field="maxCandidates"]');
     sync(currentConfig);
@@ -415,6 +431,7 @@
         ...currentConfig,
         triggerPrefix: prefixInput.value,
         searchApiUrl: searchApiUrlInput.value,
+        corsProxyUrl: corsProxyUrlInput.value,
         keywordPrefixes: keywordPrefixesInput.value,
         maxCandidates: Number(countInput.value)
       };
@@ -433,14 +450,18 @@
       currentConfig = { ...config };
       prefixInput.value = config.triggerPrefix;
       searchApiUrlInput.value = config.searchApiUrl || "";
+      corsProxyUrlInput.value = config.corsProxyUrl || "";
       keywordPrefixesInput.value = formatKeywordPrefixes(config.keywordPrefixes);
       countInput.value = String(config.maxCandidates);
     }
   }
   function injectStyles2(hostWindow) {
-    if (hostWindow.document.getElementById(STYLE_ID2)) return;
-    const style = hostWindow.document.createElement("style");
-    style.id = STYLE_ID2;
+    let style = hostWindow.document.getElementById(STYLE_ID2);
+    if (!style) {
+      style = hostWindow.document.createElement("style");
+      style.id = STYLE_ID2;
+      hostWindow.document.head.appendChild(style);
+    }
     style.textContent = `
     .ims-settings-toggle {
       position: fixed;
@@ -518,7 +539,6 @@
       color: #f2f4f8;
     }
   `;
-    hostWindow.document.head.appendChild(style);
   }
 
   // src/ui/toast.js
@@ -527,6 +547,7 @@
     injectStyles3(hostWindow);
     const root = hostWindow.document.createElement("div");
     root.className = "ims-toast-root";
+    root.hidden = true;
     hostWindow.document.body.appendChild(root);
     let timer = null;
     return {
@@ -546,9 +567,12 @@
     };
   }
   function injectStyles3(hostWindow) {
-    if (hostWindow.document.getElementById(STYLE_ID3)) return;
-    const style = hostWindow.document.createElement("style");
-    style.id = STYLE_ID3;
+    let style = hostWindow.document.getElementById(STYLE_ID3);
+    if (!style) {
+      style = hostWindow.document.createElement("style");
+      style.id = STYLE_ID3;
+      hostWindow.document.head.appendChild(style);
+    }
     style.textContent = `
     .ims-toast-root {
       position: fixed;
@@ -573,7 +597,6 @@
       background: rgba(98, 39, 39, 0.95);
     }
   `;
-    hostWindow.document.head.appendChild(style);
   }
 
   // src/search/bing.js
@@ -585,6 +608,9 @@
     }
     if (options.relayBaseUrl) {
       return searchViaRelay(trimmed, config.maxCandidates, options.relayBaseUrl, logger);
+    }
+    if (options.corsProxyUrl) {
+      return searchBingViaCorsProxy(trimmed, config.maxCandidates, options.corsProxyUrl, logger);
     }
     const endpoints = [
       `https://www.bing.com/images/async?q=${encodeURIComponent(trimmed)}&first=0&count=${config.maxCandidates}&adlt=off`,
@@ -683,6 +709,23 @@
     if (items.length) return items;
     throw new Error("Bing 页面未解析到可用结果，可能受跨域或页面结构变化影响。");
   }
+  async function searchBingViaCorsProxy(query, limit, corsProxyUrl, logger) {
+    const bingUrl = `https://www.bing.com/images/search?q=${encodeURIComponent(query)}&form=HDRSC3`;
+    const proxyEndpoint = corsProxyUrl.includes("{url}") ? corsProxyUrl.replace("{url}", encodeURIComponent(bingUrl)) : `${corsProxyUrl}?${encodeURIComponent(bingUrl)}`;
+    logger.debug("Requesting Bing via CORS proxy", proxyEndpoint);
+    const response = await fetch(proxyEndpoint, {
+      method: "GET",
+      mode: "cors",
+      credentials: "omit"
+    });
+    if (!response.ok) {
+      throw new Error(`CORS 代理请求失败：${response.status}`);
+    }
+    const html = await response.text();
+    const items = parseBingHtml(html, limit);
+    if (items.length) return items;
+    throw new Error("Bing 页面未解析到可用结果，可能受跨域或页面结构变化影响。");
+  }
 
   // src/search/api.js
   async function searchImages(query, config, logger, options = {}) {
@@ -693,7 +736,11 @@
       throw new Error("请先在配置面板填写搜索接口地址。");
     }
     if (isBingSearchUrl(apiUrl)) {
-      return searchBingImages(trimmed, config, logger, { searchPageUrl: apiUrl });
+      return searchBingImages(trimmed, config, logger, {
+        searchPageUrl: apiUrl,
+        relayBaseUrl: options.relayBaseUrl,
+        corsProxyUrl: options.corsProxyUrl
+      });
     }
     const endpoint = new URL(apiUrl, options.baseUrl || "http://localhost");
     endpoint.searchParams.set("q", trimmed);
@@ -839,7 +886,9 @@
         const searchApiUrl = resolveSearchApiUrl(state.config, getDefaultSearchApiUrl(hostWindow));
         const items = await searchImages(query, state.config, logger, {
           searchApiUrl,
-          baseUrl: hostWindow.location.href
+          baseUrl: hostWindow.location.href,
+          relayBaseUrl: hostWindow.__IMS_V010_BING_RELAY__,
+          corsProxyUrl: hostWindow.__IMS_V010_CORS_PROXY__
         });
         if (queryVersion !== state.queryVersion) return;
         if (!items.length) {
