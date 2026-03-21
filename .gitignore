@@ -1,4 +1,5 @@
 node_modules/
 .npm-cache/
 .chrome-automation/
+docs/
 tmp_*.html
