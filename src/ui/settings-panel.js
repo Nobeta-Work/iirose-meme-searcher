@@ -1,4 +1,4 @@
-import { CONFIG_RANGE, SEARCH_ENGINES, formatKeywordPrefixes } from '../config.js'
+import { CONFIG_RANGE, formatKeywordPrefixes } from '../config.js'
 
 const STYLE_ID = 'ims-v0.1.0-settings-style'
 
@@ -21,10 +21,8 @@ export function createSettingsPanel(hostWindow, logger, initialConfig, onSave) {
       <input data-field="triggerPrefix" type="text" maxlength="12" />
     </label>
     <label class="ims-settings-field">
-      <span>搜索引擎</span>
-      <select data-field="searchEngine">
-        ${SEARCH_ENGINES.map((item) => `<option value="${item.value}">${item.label}</option>`).join('')}
-      </select>
+      <span>搜索接口地址</span>
+      <input data-field="searchApiUrl" type="url" placeholder="https://your-search-service/search" />
     </label>
     <label class="ims-settings-field">
       <span>检索前缀词（每行或逗号分隔一个）</span>
@@ -43,7 +41,7 @@ export function createSettingsPanel(hostWindow, logger, initialConfig, onSave) {
   hostWindow.document.body.append(button, panel)
 
   const prefixInput = panel.querySelector('[data-field="triggerPrefix"]')
-  const engineInput = panel.querySelector('[data-field="searchEngine"]')
+  const searchApiUrlInput = panel.querySelector('[data-field="searchApiUrl"]')
   const keywordPrefixesInput = panel.querySelector('[data-field="keywordPrefixes"]')
   const countInput = panel.querySelector('[data-field="maxCandidates"]')
   sync(currentConfig)
@@ -62,7 +60,7 @@ export function createSettingsPanel(hostWindow, logger, initialConfig, onSave) {
     const nextConfig = {
       ...currentConfig,
       triggerPrefix: prefixInput.value,
-      searchEngine: engineInput.value,
+      searchApiUrl: searchApiUrlInput.value,
       keywordPrefixes: keywordPrefixesInput.value,
       maxCandidates: Number(countInput.value)
     }
@@ -82,7 +80,7 @@ export function createSettingsPanel(hostWindow, logger, initialConfig, onSave) {
   function sync(config) {
     currentConfig = { ...config }
     prefixInput.value = config.triggerPrefix
-    engineInput.value = config.searchEngine
+    searchApiUrlInput.value = config.searchApiUrl || ''
     keywordPrefixesInput.value = formatKeywordPrefixes(config.keywordPrefixes)
     countInput.value = String(config.maxCandidates)
   }

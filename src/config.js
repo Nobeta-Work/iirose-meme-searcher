@@ -1,14 +1,10 @@
 export const DEFAULT_CONFIG = Object.freeze({
   triggerPrefix: '/m',
-  searchEngine: 'bing',
+  searchApiUrl: '',
   keywordPrefixes: [],
   maxCandidates: 8,
   debug: false
 })
-
-export const SEARCH_ENGINES = Object.freeze([
-  { label: 'Bing', value: 'bing' }
-])
 
 export const CONFIG_RANGE = Object.freeze({
   minCandidates: 1,
@@ -18,7 +14,7 @@ export const CONFIG_RANGE = Object.freeze({
 export function normalizeConfig(raw = {}) {
   const next = {
     triggerPrefix: normalizePrefix(raw.triggerPrefix),
-    searchEngine: normalizeSearchEngine(raw.searchEngine),
+    searchApiUrl: normalizeSearchApiUrl(raw.searchApiUrl),
     keywordPrefixes: normalizeKeywordPrefixes(raw.keywordPrefixes),
     maxCandidates: normalizeCandidateCount(raw.maxCandidates),
     debug: Boolean(raw.debug)
@@ -33,10 +29,9 @@ function normalizePrefix(value) {
   return trimmed || DEFAULT_CONFIG.triggerPrefix
 }
 
-function normalizeSearchEngine(value) {
-  return SEARCH_ENGINES.some((item) => item.value === value)
-    ? value
-    : DEFAULT_CONFIG.searchEngine
+function normalizeSearchApiUrl(value) {
+  if (typeof value !== 'string') return DEFAULT_CONFIG.searchApiUrl
+  return value.trim()
 }
 
 function normalizeKeywordPrefixes(value) {
@@ -59,6 +54,11 @@ export function buildSearchQuery(keyword, keywordPrefixes = []) {
 
 export function formatKeywordPrefixes(keywordPrefixes = []) {
   return normalizeKeywordPrefixes(keywordPrefixes).join('\n')
+}
+
+export function resolveSearchApiUrl(config = {}, fallback = '') {
+  const value = normalizeSearchApiUrl(config.searchApiUrl)
+  return value || normalizeSearchApiUrl(fallback)
 }
 
 function splitKeywordPrefixes(value) {

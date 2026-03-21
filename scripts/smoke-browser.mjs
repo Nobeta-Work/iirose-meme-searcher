@@ -59,6 +59,7 @@ try {
   await frame.waitForSelector('#moveinput', { timeout: 15000 })
   await frame.evaluate((relay) => {
     window.__IMS_V010__?.destroy?.()
+    window.__IMS_V010_SEARCH_API_URL__ = relay
     window.__IMS_V010_BING_RELAY__ = relay
   }, `http://127.0.0.1:${relayPort}/search`)
 

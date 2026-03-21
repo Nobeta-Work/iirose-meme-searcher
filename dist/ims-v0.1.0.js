@@ -3,14 +3,11 @@
   // src/config.js
   var DEFAULT_CONFIG = Object.freeze({
     triggerPrefix: "/m",
-    searchEngine: "bing",
+    searchApiUrl: "",
     keywordPrefixes: [],
     maxCandidates: 8,
     debug: false
   });
-  var SEARCH_ENGINES = Object.freeze([
-    { label: "Bing", value: "bing" }
-  ]);
   var CONFIG_RANGE = Object.freeze({
     minCandidates: 1,
     maxCandidates: 20
@@ -18,7 +15,7 @@
   function normalizeConfig(raw = {}) {
     const next = {
       triggerPrefix: normalizePrefix(raw.triggerPrefix),
-      searchEngine: normalizeSearchEngine(raw.searchEngine),
+      searchApiUrl: normalizeSearchApiUrl(raw.searchApiUrl),
       keywordPrefixes: normalizeKeywordPrefixes(raw.keywordPrefixes),
       maxCandidates: normalizeCandidateCount(raw.maxCandidates),
       debug: Boolean(raw.debug)
@@ -30,8 +27,9 @@
     const trimmed = value.trim();
     return trimmed || DEFAULT_CONFIG.triggerPrefix;
   }
-  function normalizeSearchEngine(value) {
-    return SEARCH_ENGINES.some((item) => item.value === value) ? value : DEFAULT_CONFIG.searchEngine;
+  function normalizeSearchApiUrl(value) {
+    if (typeof value !== "string") return DEFAULT_CONFIG.searchApiUrl;
+    return value.trim();
   }
   function normalizeKeywordPrefixes(value) {
     if (Array.isArray(value)) return dedupeTokens(value);
@@ -50,6 +48,10 @@
   }
   function formatKeywordPrefixes(keywordPrefixes = []) {
     return normalizeKeywordPrefixes(keywordPrefixes).join("\n");
+  }
+  function resolveSearchApiUrl(config = {}, fallback = "") {
+    const value = normalizeSearchApiUrl(config.searchApiUrl);
+    return value || normalizeSearchApiUrl(fallback);
   }
   function splitKeywordPrefixes(value) {
     return String(value).split(/[\r\n,，、]+/g).map((item) => item.trim()).filter(Boolean);
@@ -378,10 +380,8 @@
       <input data-field="triggerPrefix" type="text" maxlength="12" />
     </label>
     <label class="ims-settings-field">
-      <span>搜索引擎</span>
-      <select data-field="searchEngine">
-        ${SEARCH_ENGINES.map((item) => `<option value="${item.value}">${item.label}</option>`).join("")}
-      </select>
+      <span>搜索接口地址</span>
+      <input data-field="searchApiUrl" type="url" placeholder="https://your-search-service/search" />
     </label>
     <label class="ims-settings-field">
       <span>检索前缀词（每行或逗号分隔一个）</span>
@@ -398,7 +398,7 @@
   `;
     hostWindow.document.body.append(button, panel);
     const prefixInput = panel.querySelector('[data-field="triggerPrefix"]');
-    const engineInput = panel.querySelector('[data-field="searchEngine"]');
+    const searchApiUrlInput = panel.querySelector('[data-field="searchApiUrl"]');
     const keywordPrefixesInput = panel.querySelector('[data-field="keywordPrefixes"]');
     const countInput = panel.querySelector('[data-field="maxCandidates"]');
     sync(currentConfig);
@@ -414,7 +414,7 @@
       const nextConfig = {
         ...currentConfig,
         triggerPrefix: prefixInput.value,
-        searchEngine: engineInput.value,
+        searchApiUrl: searchApiUrlInput.value,
         keywordPrefixes: keywordPrefixesInput.value,
         maxCandidates: Number(countInput.value)
       };
@@ -432,7 +432,7 @@
     function sync(config) {
       currentConfig = { ...config };
       prefixInput.value = config.triggerPrefix;
-      engineInput.value = config.searchEngine;
+      searchApiUrlInput.value = config.searchApiUrl || "";
       keywordPrefixesInput.value = formatKeywordPrefixes(config.keywordPrefixes);
       countInput.value = String(config.maxCandidates);
     }
@@ -576,80 +576,42 @@
     hostWindow.document.head.appendChild(style);
   }
 
-  // src/search/bing.js
-  async function searchBingImages(query, config, logger, options = {}) {
+  // src/search/api.js
+  async function searchImages(query, config, logger, options = {}) {
     const trimmed = query.trim();
     if (!trimmed) return [];
-    if (options.relayBaseUrl) {
-      return searchViaRelay(trimmed, config.maxCandidates, options.relayBaseUrl, logger);
+    const apiUrl = options.searchApiUrl?.trim();
+    if (!apiUrl) {
+      throw new Error("请先在配置面板填写搜索接口地址。");
     }
-    const endpoints = [
-      `https://www.bing.com/images/async?q=${encodeURIComponent(trimmed)}&first=0&count=${config.maxCandidates}&adlt=off`,
-      `https://www.bing.com/images/search?q=${encodeURIComponent(trimmed)}&form=HDRSC3`
-    ];
-    let lastError = null;
-    for (const endpoint of endpoints) {
-      try {
-        logger.debug("Requesting Bing endpoint", endpoint);
-        const response = await fetch(endpoint, {
-          method: "GET",
-          mode: "cors",
-          credentials: "omit"
-        });
-        const html = await response.text();
-        const results = parseBingHtml(html, config.maxCandidates);
-        if (results.length) return results;
-      } catch (error) {
-        lastError = error;
-        logger.warn("Bing fetch attempt failed", error);
-      }
-    }
-    throw new Error(lastError?.message || "Bing 搜索暂时不可用，浏览器端可能受到跨域或结果结构变化影响。");
-  }
-  function parseBingHtml(html, limit) {
-    if (typeof html !== "string" || !html) return [];
-    const matches = Array.from(html.matchAll(/murl&quot;:&quot;(.*?)&quot;.*?t&quot;:&quot;(.*?)&quot;/g));
-    const seen = /* @__PURE__ */ new Set();
-    const items = [];
-    for (const match of matches) {
-      const url = decodeHtml(match[1]);
-      const name = decodeHtml(match[2] || "Bing 图片");
-      if (!isProbablyImageUrl(url) || seen.has(url)) continue;
-      seen.add(url);
-      items.push({
-        id: randomId(),
-        name,
-        keywords: [name],
-        url,
-        enabled: true
-      });
-      if (items.length >= limit) break;
-    }
-    return items;
-  }
-  function decodeHtml(value) {
-    return String(value).replaceAll("&amp;", "&").replaceAll("&#39;", "'").replaceAll("&quot;", '"').replaceAll("/", "/");
-  }
-  function isProbablyImageUrl(value) {
-    if (!/^https?:\/\//i.test(value)) return false;
-    return /\.(png|jpe?g|gif|webp|bmp|svg)(\?|#|$)/i.test(value);
-  }
-  async function searchViaRelay(query, limit, relayBaseUrl, logger) {
-    const endpoint = new URL(relayBaseUrl);
-    endpoint.searchParams.set("q", query);
-    endpoint.searchParams.set("limit", String(limit));
-    logger.debug("Requesting relay endpoint", endpoint.toString());
+    const endpoint = new URL(apiUrl, options.baseUrl || "http://localhost");
+    endpoint.searchParams.set("q", trimmed);
+    endpoint.searchParams.set("limit", String(config.maxCandidates));
+    logger.debug("Requesting search API", endpoint.toString());
     const response = await fetch(endpoint.toString(), {
       method: "GET",
       mode: "cors",
       credentials: "omit"
     });
     if (!response.ok) {
-      throw new Error(`Bing relay failed: ${response.status}`);
+      throw new Error(`搜索接口请求失败：${response.status}`);
     }
     const data = await response.json();
     if (!Array.isArray(data.items)) return [];
-    return data.items.filter((item) => item?.enabled !== false).slice(0, limit);
+    return data.items.map(normalizeItem).filter(Boolean).slice(0, config.maxCandidates);
+  }
+  function normalizeItem(item) {
+    if (!item || typeof item !== "object") return null;
+    if (item.enabled === false) return null;
+    if (typeof item.url !== "string" || !/^https?:\/\//i.test(item.url)) return null;
+    const name = typeof item.name === "string" && item.name.trim() ? item.name.trim() : "搜索结果";
+    return {
+      id: typeof item.id === "string" && item.id.trim() ? item.id.trim() : randomId(),
+      name,
+      keywords: Array.isArray(item.keywords) ? item.keywords.map((value) => String(value).trim()).filter(Boolean) : [name],
+      url: item.url,
+      enabled: true
+    };
   }
 
   // src/trigger.js
@@ -732,6 +694,7 @@
       currentInput: null,
       queryVersion: 0
     };
+    state.config.searchApiUrl = resolveSearchApiUrl(state.config, getDefaultSearchApiUrl(hostWindow));
     const logger = createLogger("core", state.config.debug);
     const runtime = createRuntime(hostWindow, logger);
     const candidateBar = createCandidateBar(hostWindow, logger);
@@ -758,16 +721,15 @@
       handleInputChange(input, text);
     });
     const debouncedSearch = debounce(async (input, keyword, queryVersion) => {
-      if (state.config.searchEngine !== "bing") {
-        candidateBar.renderError(input, "当前版本仅支持 Bing。");
-        return;
-      }
       candidateBar.renderLoading(input);
       try {
         const query = buildSearchQuery(keyword, state.config.keywordPrefixes);
         logger.debug("Search query built", query);
-        const relayBaseUrl = typeof hostWindow.__IMS_V010_BING_RELAY__ === "string" ? hostWindow.__IMS_V010_BING_RELAY__ : "";
-        const items = await searchBingImages(query, state.config, logger, { relayBaseUrl });
+        const searchApiUrl = resolveSearchApiUrl(state.config, getDefaultSearchApiUrl(hostWindow));
+        const items = await searchImages(query, state.config, logger, {
+          searchApiUrl,
+          baseUrl: hostWindow.location.href
+        });
         if (queryVersion !== state.queryVersion) return;
         if (!items.length) {
           candidateBar.renderEmpty(input, "没有找到相关图片");
@@ -812,6 +774,7 @@
     }
     function handleConfigSave(nextConfig) {
       state.config = saveConfig(hostWindow, nextConfig);
+      state.config.searchApiUrl = resolveSearchApiUrl(state.config, getDefaultSearchApiUrl(hostWindow));
       settingsPanel.sync(state.config);
       logger.info("Config updated", state.config);
       toast.show("配置已保存", "success");
@@ -837,6 +800,15 @@
       String(hostWindow.roomnFull ?? ""),
       String(hostWindow.roomColor ?? "")
     ].join("|");
+  }
+  function getDefaultSearchApiUrl(hostWindow) {
+    if (typeof hostWindow.__IMS_V010_SEARCH_API_URL__ === "string" && hostWindow.__IMS_V010_SEARCH_API_URL__.trim()) {
+      return hostWindow.__IMS_V010_SEARCH_API_URL__.trim();
+    }
+    if (typeof hostWindow.__IMS_V010_BING_RELAY__ === "string" && hostWindow.__IMS_V010_BING_RELAY__.trim()) {
+      return hostWindow.__IMS_V010_BING_RELAY__.trim();
+    }
+    return "";
   }
 
   // src/index.js

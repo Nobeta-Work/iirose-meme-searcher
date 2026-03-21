@@ -1,11 +1,11 @@
-import { DEFAULT_CONFIG, buildSearchQuery, normalizeConfig } from './config.js'
+import { DEFAULT_CONFIG, buildSearchQuery, normalizeConfig, resolveSearchApiUrl } from './config.js'
 import { createLogger } from './logger.js'
 import { createRuntime } from './runtime.js'
 import { loadConfig, saveConfig } from './storage.js'
 import { createCandidateBar } from './ui/candidate-bar.js'
 import { createSettingsPanel } from './ui/settings-panel.js'
 import { createToastManager } from './ui/toast.js'
-import { searchBingImages } from './search/bing.js'
+import { searchImages } from './search/api.js'
 import { parseTriggerState } from './trigger.js'
 import { debounce } from './utils.js'
 import { sendCandidateUrl } from './send.js'
@@ -23,6 +23,7 @@ export function bootstrapPlugin(hostWindow = window) {
     currentInput: null,
     queryVersion: 0
   }
+  state.config.searchApiUrl = resolveSearchApiUrl(state.config, getDefaultSearchApiUrl(hostWindow))
 
   const logger = createLogger('core', state.config.debug)
   const runtime = createRuntime(hostWindow, logger)
@@ -54,20 +55,16 @@ export function bootstrapPlugin(hostWindow = window) {
   })
 
   const debouncedSearch = debounce(async (input, keyword, queryVersion) => {
-    if (state.config.searchEngine !== 'bing') {
-      candidateBar.renderError(input, '当前版本仅支持 Bing。')
-      return
-    }
-
     candidateBar.renderLoading(input)
 
     try {
       const query = buildSearchQuery(keyword, state.config.keywordPrefixes)
       logger.debug('Search query built', query)
-      const relayBaseUrl = typeof hostWindow.__IMS_V010_BING_RELAY__ === 'string'
-        ? hostWindow.__IMS_V010_BING_RELAY__
-        : ''
-      const items = await searchBingImages(query, state.config, logger, { relayBaseUrl })
+      const searchApiUrl = resolveSearchApiUrl(state.config, getDefaultSearchApiUrl(hostWindow))
+      const items = await searchImages(query, state.config, logger, {
+        searchApiUrl,
+        baseUrl: hostWindow.location.href
+      })
       if (queryVersion !== state.queryVersion) return
       if (!items.length) {
         candidateBar.renderEmpty(input, '没有找到相关图片')
@@ -119,6 +116,7 @@ export function bootstrapPlugin(hostWindow = window) {
 
   function handleConfigSave(nextConfig) {
     state.config = saveConfig(hostWindow, nextConfig)
+    state.config.searchApiUrl = resolveSearchApiUrl(state.config, getDefaultSearchApiUrl(hostWindow))
     settingsPanel.sync(state.config)
     logger.info('Config updated', state.config)
     toast.show('配置已保存', 'success')
@@ -155,4 +153,14 @@ function getRoomSignature(hostWindow) {
     String(hostWindow.roomnFull ?? ''),
     String(hostWindow.roomColor ?? '')
   ].join('|')
+}
+
+function getDefaultSearchApiUrl(hostWindow) {
+  if (typeof hostWindow.__IMS_V010_SEARCH_API_URL__ === 'string' && hostWindow.__IMS_V010_SEARCH_API_URL__.trim()) {
+    return hostWindow.__IMS_V010_SEARCH_API_URL__.trim()
+  }
+  if (typeof hostWindow.__IMS_V010_BING_RELAY__ === 'string' && hostWindow.__IMS_V010_BING_RELAY__.trim()) {
+    return hostWindow.__IMS_V010_BING_RELAY__.trim()
+  }
+  return ''
 }

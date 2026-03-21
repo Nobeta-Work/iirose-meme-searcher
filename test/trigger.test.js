@@ -2,7 +2,7 @@ import test from 'node:test'
 import assert from 'node:assert/strict'
 
 import { parseTriggerState } from '../src/trigger.js'
-import { buildSearchQuery, normalizeConfig } from '../src/config.js'
+import { buildSearchQuery, normalizeConfig, resolveSearchApiUrl } from '../src/config.js'
 import { parseBingHtml } from '../src/search/bing.js'
 
 test('parseTriggerState supports inline keyword', () => {
@@ -33,9 +33,19 @@ test('normalizeConfig parses keyword prefixes from multiline text', () => {
   assert.deepEqual(config.keywordPrefixes, ['duitang.com', '表情包', '白圣女'])
 })
 
+test('normalizeConfig trims search api url', () => {
+  const config = normalizeConfig({ searchApiUrl: '  https://example.com/search  ' })
+  assert.equal(config.searchApiUrl, 'https://example.com/search')
+})
+
 test('buildSearchQuery prefixes configured keyword prefixes', () => {
   const query = buildSearchQuery('开心', ['duitang.com', '表情包', '白圣女'])
   assert.equal(query, 'duitang.com 表情包 白圣女 开心')
+})
+
+test('resolveSearchApiUrl prefers explicit config over fallback', () => {
+  const value = resolveSearchApiUrl({ searchApiUrl: 'https://config.example/search' }, 'https://fallback.example/search')
+  assert.equal(value, 'https://config.example/search')
 })
 
 test('parseBingHtml extracts image results from bing-like markup', () => {
