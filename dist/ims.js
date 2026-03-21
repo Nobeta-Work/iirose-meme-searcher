@@ -818,4 +818,4 @@
     console.error("[IMS:bootstrap] Failed to initialize", error);
   }
 })();
-//# sourceMappingURL=ims-v0.1.0.js.map
+//# sourceMappingURL=ims.js.map

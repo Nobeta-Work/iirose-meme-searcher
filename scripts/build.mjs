@@ -6,7 +6,7 @@ import esbuild from 'esbuild'
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 const rootDir = path.resolve(__dirname, '..')
 const distDir = path.join(rootDir, 'dist')
-const outFile = path.join(distDir, 'ims-v0.1.0.js')
+const outFile = path.join(distDir, 'ims.js')
 
 await mkdir(distDir, { recursive: true })
 

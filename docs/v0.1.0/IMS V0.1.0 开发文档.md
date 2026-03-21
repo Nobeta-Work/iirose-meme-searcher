@@ -55,7 +55,7 @@
 
 ```js
 (() => {
-  const SRC = 'https://<release-domain>/ims-v0.1.0.js'
+  const SRC = 'https://<release-domain>/ims.js'
   const frame = document.getElementById('mainFrame')
   const hostWin = frame?.contentWindow || window
   const hostDoc = hostWin.document
