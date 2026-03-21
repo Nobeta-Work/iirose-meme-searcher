@@ -14,11 +14,12 @@ export function createSettingsPanel(hostWindow, logger, initialConfig, onSave) {
   button.style.right = '18px'
   button.style.bottom = 'auto'
   button.style.left = 'auto'
-  button.hidden = true
-  button.style.pointerEvents = 'none'
+  button.hidden = false
+  button.style.pointerEvents = 'auto'
 
   const panel = hostWindow.document.createElement('div')
   panel.className = 'ims-settings-panel'
+  panel.hidden = false
   panel.style.top = '118px'
   panel.style.right = '18px'
   panel.style.bottom = 'auto'
@@ -68,7 +69,6 @@ export function createSettingsPanel(hostWindow, logger, initialConfig, onSave) {
 
   panel.querySelector('[data-action="cancel"]').addEventListener('click', () => {
     sync(currentConfig)
-    panel.hidden = true
   })
 
   panel.querySelector('[data-action="save"]').addEventListener('click', () => {
