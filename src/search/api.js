@@ -1,4 +1,5 @@
 import { randomId } from '../utils.js'
+import { isBingSearchUrl, searchBingImages } from './bing.js'
 
 export async function searchImages(query, config, logger, options = {}) {
   const trimmed = query.trim()
@@ -7,6 +8,10 @@ export async function searchImages(query, config, logger, options = {}) {
   const apiUrl = options.searchApiUrl?.trim()
   if (!apiUrl) {
     throw new Error('请先在配置面板填写搜索接口地址。')
+  }
+
+  if (isBingSearchUrl(apiUrl)) {
+    return searchBingImages(trimmed, config, logger, { searchPageUrl: apiUrl })
   }
 
   const endpoint = new URL(apiUrl, options.baseUrl || 'http://localhost')

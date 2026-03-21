@@ -3,7 +3,7 @@
   // src/config.js
   var DEFAULT_CONFIG = Object.freeze({
     triggerPrefix: "/m",
-    searchApiUrl: "",
+    searchApiUrl: "https://cn.bing.com/images/search",
     keywordPrefixes: ["duitang.com", "表情包", "白圣女"],
     maxCandidates: 8,
     debug: false
@@ -381,7 +381,7 @@
     </label>
     <label class="ims-settings-field">
       <span>搜索接口地址</span>
-      <input data-field="searchApiUrl" type="url" placeholder="https://your-search-service/search" />
+      <input data-field="searchApiUrl" type="url" placeholder="https://cn.bing.com/images/search" />
     </label>
     <label class="ims-settings-field">
       <span>检索前缀词（每行或逗号分隔一个）</span>
@@ -576,6 +576,114 @@
     hostWindow.document.head.appendChild(style);
   }
 
+  // src/search/bing.js
+  async function searchBingImages(query, config, logger, options = {}) {
+    const trimmed = query.trim();
+    if (!trimmed) return [];
+    if (options.searchPageUrl && isBingSearchUrl(options.searchPageUrl)) {
+      return searchBingViaConfiguredUrl(trimmed, config.maxCandidates, options.searchPageUrl, logger);
+    }
+    if (options.relayBaseUrl) {
+      return searchViaRelay(trimmed, config.maxCandidates, options.relayBaseUrl, logger);
+    }
+    const endpoints = [
+      `https://www.bing.com/images/async?q=${encodeURIComponent(trimmed)}&first=0&count=${config.maxCandidates}&adlt=off`,
+      `https://www.bing.com/images/search?q=${encodeURIComponent(trimmed)}&form=HDRSC3`
+    ];
+    let lastError = null;
+    for (const endpoint of endpoints) {
+      try {
+        logger.debug("Requesting Bing endpoint", endpoint);
+        const response = await fetch(endpoint, {
+          method: "GET",
+          mode: "cors",
+          credentials: "omit"
+        });
+        const html = await response.text();
+        const results = parseBingHtml(html, config.maxCandidates);
+        if (results.length) return results;
+      } catch (error) {
+        lastError = error;
+        logger.warn("Bing fetch attempt failed", error);
+      }
+    }
+    throw new Error(lastError?.message || "Bing 搜索暂时不可用，浏览器端可能受到跨域或结果结构变化影响。");
+  }
+  function isBingSearchUrl(value) {
+    if (typeof value !== "string" || !value.trim()) return false;
+    try {
+      const url = new URL(value);
+      return /(^|\.)bing\.com$/i.test(url.hostname) && /\/images\/search/i.test(url.pathname);
+    } catch {
+      return false;
+    }
+  }
+  function parseBingHtml(html, limit) {
+    if (typeof html !== "string" || !html) return [];
+    const matches = [
+      ...Array.from(html.matchAll(/murl&quot;:&quot;(.*?)&quot;.*?t&quot;:&quot;(.*?)&quot;/g)),
+      ...Array.from(html.matchAll(/"murl":"(.*?)".*?"t":"(.*?)"/g))
+    ];
+    const seen = /* @__PURE__ */ new Set();
+    const items = [];
+    for (const match of matches) {
+      const url = decodeHtml(match[1]);
+      const name = decodeHtml(match[2] || "Bing 图片");
+      if (!isProbablyImageUrl(url) || seen.has(url)) continue;
+      seen.add(url);
+      items.push({
+        id: randomId(),
+        name,
+        keywords: [name],
+        url,
+        enabled: true
+      });
+      if (items.length >= limit) break;
+    }
+    return items;
+  }
+  function decodeHtml(value) {
+    return String(value).replaceAll("&amp;", "&").replaceAll("&#39;", "'").replaceAll("&quot;", '"').replaceAll("/", "/");
+  }
+  function isProbablyImageUrl(value) {
+    if (!/^https?:\/\//i.test(value)) return false;
+    return /\.(png|jpe?g|gif|webp|bmp|svg)(\?|#|$)/i.test(value);
+  }
+  async function searchViaRelay(query, limit, relayBaseUrl, logger) {
+    const endpoint = new URL(relayBaseUrl);
+    endpoint.searchParams.set("q", query);
+    endpoint.searchParams.set("limit", String(limit));
+    logger.debug("Requesting relay endpoint", endpoint.toString());
+    const response = await fetch(endpoint.toString(), {
+      method: "GET",
+      mode: "cors",
+      credentials: "omit"
+    });
+    if (!response.ok) {
+      throw new Error(`Bing relay failed: ${response.status}`);
+    }
+    const data = await response.json();
+    if (!Array.isArray(data.items)) return [];
+    return data.items.filter((item) => item?.enabled !== false).slice(0, limit);
+  }
+  async function searchBingViaConfiguredUrl(query, limit, searchPageUrl, logger) {
+    const endpoint = new URL(searchPageUrl);
+    endpoint.searchParams.set("q", query);
+    if (!endpoint.searchParams.has("form")) {
+      endpoint.searchParams.set("form", "HDRSC3");
+    }
+    logger.debug("Requesting configured Bing page", endpoint.toString());
+    const response = await fetch(endpoint.toString(), {
+      method: "GET",
+      mode: "cors",
+      credentials: "omit"
+    });
+    const html = await response.text();
+    const items = parseBingHtml(html, limit);
+    if (items.length) return items;
+    throw new Error("Bing 页面未解析到可用结果，可能受跨域或页面结构变化影响。");
+  }
+
   // src/search/api.js
   async function searchImages(query, config, logger, options = {}) {
     const trimmed = query.trim();
@@ -583,6 +691,9 @@
     const apiUrl = options.searchApiUrl?.trim();
     if (!apiUrl) {
       throw new Error("请先在配置面板填写搜索接口地址。");
+    }
+    if (isBingSearchUrl(apiUrl)) {
+      return searchBingImages(trimmed, config, logger, { searchPageUrl: apiUrl });
     }
     const endpoint = new URL(apiUrl, options.baseUrl || "http://localhost");
     endpoint.searchParams.set("q", trimmed);

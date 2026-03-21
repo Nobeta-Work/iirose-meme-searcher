@@ -1,6 +1,6 @@
 export const DEFAULT_CONFIG = Object.freeze({
   triggerPrefix: '/m',
-  searchApiUrl: '',
+  searchApiUrl: 'https://cn.bing.com/images/search',
   keywordPrefixes: ['duitang.com', '表情包', '白圣女'],
   maxCandidates: 8,
   debug: false

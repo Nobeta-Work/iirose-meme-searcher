@@ -22,7 +22,7 @@ export function createSettingsPanel(hostWindow, logger, initialConfig, onSave) {
     </label>
     <label class="ims-settings-field">
       <span>搜索接口地址</span>
-      <input data-field="searchApiUrl" type="url" placeholder="https://your-search-service/search" />
+      <input data-field="searchApiUrl" type="url" placeholder="https://cn.bing.com/images/search" />
     </label>
     <label class="ims-settings-field">
       <span>检索前缀词（每行或逗号分隔一个）</span>

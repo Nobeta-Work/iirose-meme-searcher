@@ -3,7 +3,7 @@ import assert from 'node:assert/strict'
 
 import { parseTriggerState } from '../src/trigger.js'
 import { buildSearchQuery, normalizeConfig, resolveSearchApiUrl } from '../src/config.js'
-import { parseBingHtml } from '../src/search/bing.js'
+import { isBingSearchUrl, parseBingHtml } from '../src/search/bing.js'
 
 test('parseTriggerState supports inline keyword', () => {
   const state = parseTriggerState('/m猫猫', '/m')
@@ -46,6 +46,12 @@ test('buildSearchQuery prefixes configured keyword prefixes', () => {
 test('resolveSearchApiUrl prefers explicit config over fallback', () => {
   const value = resolveSearchApiUrl({ searchApiUrl: 'https://config.example/search' }, 'https://fallback.example/search')
   assert.equal(value, 'https://config.example/search')
+})
+
+test('isBingSearchUrl detects Bing image search pages', () => {
+  assert.equal(isBingSearchUrl('https://cn.bing.com/images/search'), true)
+  assert.equal(isBingSearchUrl('https://www.bing.com/images/search?form=HDRSC3'), true)
+  assert.equal(isBingSearchUrl('https://example.com/search'), false)
 })
 
 test('parseBingHtml extracts image results from bing-like markup', () => {

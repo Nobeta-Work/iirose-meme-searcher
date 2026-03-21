@@ -4,6 +4,10 @@ export async function searchBingImages(query, config, logger, options = {}) {
   const trimmed = query.trim()
   if (!trimmed) return []
 
+  if (options.searchPageUrl && isBingSearchUrl(options.searchPageUrl)) {
+    return searchBingViaConfiguredUrl(trimmed, config.maxCandidates, options.searchPageUrl, logger)
+  }
+
   if (options.relayBaseUrl) {
     return searchViaRelay(trimmed, config.maxCandidates, options.relayBaseUrl, logger)
   }
@@ -34,10 +38,23 @@ export async function searchBingImages(query, config, logger, options = {}) {
   throw new Error(lastError?.message || 'Bing 搜索暂时不可用，浏览器端可能受到跨域或结果结构变化影响。')
 }
 
+export function isBingSearchUrl(value) {
+  if (typeof value !== 'string' || !value.trim()) return false
+  try {
+    const url = new URL(value)
+    return /(^|\.)bing\.com$/i.test(url.hostname) && /\/images\/search/i.test(url.pathname)
+  } catch {
+    return false
+  }
+}
+
 export function parseBingHtml(html, limit) {
   if (typeof html !== 'string' || !html) return []
 
-  const matches = Array.from(html.matchAll(/murl&quot;:&quot;(.*?)&quot;.*?t&quot;:&quot;(.*?)&quot;/g))
+  const matches = [
+    ...Array.from(html.matchAll(/murl&quot;:&quot;(.*?)&quot;.*?t&quot;:&quot;(.*?)&quot;/g)),
+    ...Array.from(html.matchAll(/"murl":"(.*?)".*?"t":"(.*?)"/g))
+  ]
   const seen = new Set()
   const items = []
 
@@ -90,4 +107,23 @@ async function searchViaRelay(query, limit, relayBaseUrl, logger) {
   const data = await response.json()
   if (!Array.isArray(data.items)) return []
   return data.items.filter((item) => item?.enabled !== false).slice(0, limit)
+}
+
+async function searchBingViaConfiguredUrl(query, limit, searchPageUrl, logger) {
+  const endpoint = new URL(searchPageUrl)
+  endpoint.searchParams.set('q', query)
+  if (!endpoint.searchParams.has('form')) {
+    endpoint.searchParams.set('form', 'HDRSC3')
+  }
+
+  logger.debug('Requesting configured Bing page', endpoint.toString())
+  const response = await fetch(endpoint.toString(), {
+    method: 'GET',
+    mode: 'cors',
+    credentials: 'omit'
+  })
+  const html = await response.text()
+  const items = parseBingHtml(html, limit)
+  if (items.length) return items
+  throw new Error('Bing 页面未解析到可用结果，可能受跨域或页面结构变化影响。')
 }
