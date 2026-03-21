@@ -10,7 +10,7 @@ export function createSettingsPanel(hostWindow, logger, initialConfig, onSave) {
   button.type = 'button'
   button.className = 'ims-settings-toggle'
   button.textContent = 'IMS'
-  button.style.top = '18px'
+  button.style.top = '68px'
   button.style.right = '18px'
   button.style.bottom = 'auto'
   button.style.left = 'auto'
@@ -19,8 +19,7 @@ export function createSettingsPanel(hostWindow, logger, initialConfig, onSave) {
 
   const panel = hostWindow.document.createElement('div')
   panel.className = 'ims-settings-panel'
-  panel.hidden = true
-  panel.style.top = '68px'
+  panel.style.top = '118px'
   panel.style.right = '18px'
   panel.style.bottom = 'auto'
   panel.style.left = 'auto'
@@ -61,61 +60,15 @@ export function createSettingsPanel(hostWindow, logger, initialConfig, onSave) {
   const countInput = panel.querySelector('[data-field="maxCandidates"]')
   sync(currentConfig)
 
-  let hideTimer = null
-  let clickCount = 0
-  let clickTimer = null
-
-  function showUI() {
-    clearTimeout(hideTimer)
-    clearTimeout(clickTimer)
-    button.hidden = false
-    button.style.pointerEvents = 'auto'
-    panel.hidden = false
-    sync(currentConfig)
-
-    hideTimer = setTimeout(() => {
-      panel.hidden = true
-      button.hidden = true
-      button.style.pointerEvents = 'none'
-    }, 5000)
-  }
-
-  function handleDoubleClick() {
-    clickCount++
-    if (clickCount === 2) {
-      showUI()
-      clickCount = 0
-      clearTimeout(clickTimer)
-    } else {
-      clickTimer = setTimeout(() => {
-        clickCount = 0
-      }, 300)
-    }
-  }
-
-  // 单击按钮打开面板
+  // 单击按钮切换面板显示/隐藏
   button.addEventListener('click', (event) => {
     event.stopPropagation()
-    clearTimeout(hideTimer)
-    panel.hidden = false
-    sync(currentConfig)
-
-    hideTimer = setTimeout(() => {
-      panel.hidden = true
-      button.hidden = true
-      button.style.pointerEvents = 'none'
-    }, 5000)
+    panel.hidden = !panel.hidden
   })
 
-  // 双击任意位置触发显示
-  hostWindow.document.addEventListener('dblclick', handleDoubleClick)
-
   panel.querySelector('[data-action="cancel"]').addEventListener('click', () => {
-    clearTimeout(hideTimer)
-    panel.hidden = true
-    button.hidden = true
-    button.style.pointerEvents = 'none'
     sync(currentConfig)
+    panel.hidden = true
   })
 
   panel.querySelector('[data-action="save"]').addEventListener('click', () => {
@@ -129,18 +82,12 @@ export function createSettingsPanel(hostWindow, logger, initialConfig, onSave) {
     }
     logger.info('Saving config', nextConfig)
     onSave(nextConfig)
-    clearTimeout(hideTimer)
     panel.hidden = true
-    button.hidden = true
-    button.style.pointerEvents = 'none'
   })
 
   return {
     sync,
     destroy() {
-      clearTimeout(hideTimer)
-      clearTimeout(clickTimer)
-      hostWindow.document.removeEventListener('dblclick', handleDoubleClick)
       button.remove()
       panel.remove()
     }
@@ -167,7 +114,7 @@ function injectStyles(hostWindow) {
     .ims-settings-toggle {
       position: fixed;
       right: 18px;
-      top: 18px;
+      top: 68px;
       z-index: 2147483001;
       border: 0;
       border-radius: 999px;
@@ -178,7 +125,6 @@ function injectStyles(hostWindow) {
       padding: 10px 14px;
       cursor: pointer;
       box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
-      opacity: 0;
       transition: opacity 0.2s;
     }
 
@@ -189,7 +135,7 @@ function injectStyles(hostWindow) {
     .ims-settings-panel {
       position: fixed;
       right: 18px;
-      top: 68px;
+      top: 118px;
       z-index: 2147483001;
       width: 280px;
       padding: 14px;
@@ -199,10 +145,6 @@ function injectStyles(hostWindow) {
       border: 1px solid rgba(255, 255, 255, 0.1);
       box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
       backdrop-filter: blur(12px);
-    }
-
-    .ims-settings-panel[hidden] {
-      pointer-events: none;
     }
 
     .ims-settings-header {
